@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>優惠券 SQL 生成器</title>
+		<style>
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+				margin-bottom: 0.5rem;
+				border-radius: 0.375rem;
+				border-style: none;
+				font-size: 1rem;
+			}
+			body {
+				font-family: Arial, sans-serif;
+				background-color: #f4f4f9;
+				margin: 20px;
+			}
+			h2 {
+				color: #333;
+				font-size: 2rem;
+				text-align: center;
+			}
+			div {
+				margin-bottom: 1rem;
+			}
+			.form-label {
+				margin-bottom: 0.5rem;
+			}
+			.container {
+				max-width: 700px;
+				background: white;
+				padding: 20px;
+				box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+				margin: auto;
+				margin-top: 30px;
+			}
+			textarea,
+			input {
+				width: 100%;
+				padding: 10px;
+				margin: 8px 0;
+				border: 1px solid #ccc;
+				box-shadow: inset 0px 1px 3px rgba(0, 0, 0, 0.1);
+			}
+			textarea {
+				display: block;
+				white-space: pre-wrap;
+				word-wrap: break-word;
+				overflow-y: auto;
+				overflow-x: auto;
+				resize: none;
+				font-family: monospace;
+				min-height: calc(1.5em + 0.75rem * 2);
+				color: #212529;
+			}
+			input:focus,
+			textarea:focus {
+				border-color: #86b7fe;
+				outline: 0;
+				box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+			}
+			button {
+				background-color: rgb(13, 110, 253);
+				color: white;
+				border: none;
+				padding: 0.75rem 0.375rem;
+				width: 100%;
+				cursor: pointer;
+			}
+			button:hover {
+				background-color: #0b5ed7;
+			}
+			button.btn-secondary {
+				background-color: #6c757d;
+			}
+			button.btn-secondary:hover {
+				background-color: #5c636a;
+			}
+			.tags-container {
+				display: flex;
+				gap: 10px;
+				margin-top: 0.5rem;
+				margin-bottom: 0.5rem;
+				flex-wrap: wrap;
+			}
+			.tag {
+				padding: 0.35em 0.65em;
+				background-color: rgb(13, 110, 253);
+				color: white;
+				cursor: pointer;
+				font-size: 0.75em;
+				transition: 0.3s;
+				text-align: center;
+			}
+			.tag:hover {
+				background-color: #0056b3;
+			}
+			::-webkit-scrollbar {
+				width: 8px;
+				height: 8px;
+			}
+			::-webkit-scrollbar-thumb {
+				background: #007bff;
+			}
+			::-webkit-scrollbar-thumb:hover {
+				background: #0056b3;
+			}
+			::-webkit-scrollbar-track {
+				background: #f4f4f9;
+			}
+			hr {
+				margin: 1rem 0;
+				color: inherit;
+				border: 0;
+				border-top: 1px solid;
+				opacity: 0.25;
+			}
+			footer {
+				margin-top: 20px;
+				font-size: 14px;
+				color: gray;
+			}
+			#output {
+				white-space: nowrap;
+				font-family: monospace;
+				font-size: 14px;
+				white-space: pre-wrap;
+			}
+			#customAlert {
+				display: none;
+				position: fixed;
+				top: 30%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				padding: 20px;
+				background-color: rgba(0, 0, 0, 0.8);
+				color: white;
+				font-size: 16px;
+				z-index: 1000;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h2>優惠券 SQL 生成器</h2>
+			<div>
+				<label for="cust_id" class="form-label">輸入 CUST_ID：</label>
+				<input type="text" id="cust_id" placeholder="K125182254" oninput="this.value = this.value.toUpperCase();" />
+			</div>
+			<div>
+				<label class="form-label">常用 ID：</label>
+				<div class="tags-container">
+					<span class="tag" onclick="setCustId(this)">K125182254</span>
+					<span class="tag" onclick="setCustId(this)">A987654321</span>
+					<span class="tag" onclick="setCustId(this)">B123456789</span>
+				</div>
+			</div>
+			<div>
+				<label for="serials">輸入 SERIAL_NUMBER（每行一個）：</label> <textarea id="serials" placeholder="FXEX202312260620000001042" spellcheck="false" rows="5"></textarea>
+			</div>
+			<div>
+				<button onclick="generateSQL()">生成 SQL</button>
+				<button onclick="copyToClipboard()" class="btn-secondary">一鍵複製</button>
+			</div>
+			<hr />
+			<div>
+				<label for="output" class="form-label">產生的 SQL：</label>
+				<textarea id="output" rows="5" readonly></textarea>
+			</div>
+			<div id="customAlert">操作成功！</div>
+		</div>
+		<footer style="text-align: center">YusenWu © 2025</footer>
+
+		<script>
+			function setCustId(tagElement) {
+				document.getElementById("cust_id").value = tagElement.innerText.trim().toUpperCase();
+			}
+			function generateSQL() {
+				let serials = document.getElementById("serials").value.trim().split("\n");
+				let custId = document.getElementById("cust_id").value.trim().toUpperCase();
+				let outputTextarea = document.getElementById("output");
+
+				if (custId === "") {
+					showCustomAlert("請輸入 CUST_ID");
+					return;
+				} else if (serials.length === 0 || (serials.length === 1 && serials[0] === "")) {
+					showCustomAlert("請輸入至少一個 SERIAL_NUMBER");
+					return;
+				} else {
+					let sqlStatements = serials
+						.map((serial) => {
+							serial = serial.trim();
+							if (!serial) return "";
+
+							if (serial.length < 6) {
+								showCustomAlert(`無效的 SERIAL_NUMBER: ${serial}`);
+								return "";
+							}
+
+							let prefix = serial.slice(0, -10);
+							let last6Digits = serial.slice(-10);
+							let newSerial = prefix + String(parseInt(last6Digits) + 1).padStart(10, "0");
+
+							return `UPDATE ECOUPON_SN_REGISTRY SET STATUS = 0, END_DATE = SYSDATE+7, SERIAL_NUMBER = "${newSerial}", TRN_NUM = "" WHERE SERIAL_NUMBER = "${serial}" AND CUST_ID = "${custId}";`;
+						})
+						.filter((sql) => sql !== "");
+
+					if (sqlStatements.length === 0) {
+						showCustomAlert("沒有有效的 SERIAL_NUMBER");
+						return;
+					}
+					showCustomAlert("SQL 生成成功！");
+					outputTextarea.value = sqlStatements.join("\n");
+				}
+			}
+			function copyToClipboard() {
+				let outputTextarea = document.getElementById("output");
+
+				if (outputTextarea.value.trim() !== "") {
+					navigator.clipboard
+						.writeText(outputTextarea.value)
+						.then(() => {
+							showCustomAlert("SQL 已複製到剪貼簿！");
+						})
+						.catch((err) => {
+							showCustomAlert("複製失敗: " + err);
+						});
+				} else {
+					showCustomAlert("請先生成 SQL 內容！");
+				}
+			}
+			function showCustomAlert(message) {
+				const alertBox = document.getElementById("customAlert");
+				alertBox.innerText = message;
+				alertBox.style.display = "block";
+
+				setTimeout(function () {
+					alertBox.style.display = "none";
+				}, 1000);
+			}
+		</script>
+	</body>
+</html>
